@@ -1,0 +1,615 @@
+================================================================================
+       SISTEMA DE REGISTRO DE MASCOTAS — VETERINARIA
+       PROMPT COMPLETO PARA GENERACION DEL BACKEND
+================================================================================
+
+1. DESCRIPCION GENERAL
+================================================================================
+
+Sistema web para el registro y gestion de mascotas en una clinica veterinaria.
+Permite administrar la informacion de propietarios, mascotas, especies, razas
+y el historial de visitas medicas. Esta orientado al personal de recepcion y
+veterinarios que necesitan consultar y mantener actualizado el expediente de
+cada paciente animal.
+
+El backend expone una API REST protegida con autenticacion JWT (login simple
+con usuario y contrasena). Solo usuarios autenticados pueden acceder a los
+endpoints de negocio. El endpoint de login es publico.
+
+
+2. OBJETIVOS
+================================================================================
+
+- Registrar propietarios con sus datos de contacto.
+- Registrar mascotas asociadas a un propietario.
+- Catalogar especies y razas disponibles.
+- Registrar visitas medicas con diagnostico, tratamiento y observaciones.
+- Consultar el historial clinico de cada mascota.
+- Proveer un dashboard con estadisticas basicas (total mascotas, visitas
+  recientes, distribucion por especie).
+- Proteger todos los endpoints con autenticacion JWT.
+
+
+3. STACK TECNOLOGICO DEL BACKEND
+================================================================================
+
+  - Lenguaje      : Java 21
+  - Framework     : Spring Boot 3.x (ultima version estable)
+  - ORM           : Spring Data JPA + Hibernate
+  - Base de datos : PostgreSQL
+  - Migraciones   : Flyway (script inicial en resources/db/migration/)
+  - Seguridad     : Spring Security + JWT (jjwt 0.12.x)
+  - Documentacion : SpringDoc OpenAPI 3 (Swagger UI en /swagger-ui.html)
+  - Utilidades    : Lombok
+  - Build         : Maven
+
+
+4. ARQUITECTURA — ESTRUCTURA DE CARPETAS
+================================================================================
+
+El proyecto se organiza por features (vertical slicing). Cada feature contiene
+sus propios controller, service y repository, todos definidos como interfaz con
+su implementacion separada. Los repositorios pueden usar metodos de JpaRepository
+y consultas JPQL/HQL de Hibernate cuando sea necesario.
+
+Paquete raiz: com.veterinaria
+
+src/main/java/com/veterinaria/
+|
+├── VeterinariaApplication.java
+|
+├── config/
+│   ├── SecurityConfig.java          (configuracion de Spring Security y CORS)
+│   ├── JwtConfig.java               (bean de propiedades JWT desde application.properties)
+│   └── OpenApiConfig.java           (configuracion Swagger con soporte JWT)
+|
+├── common/
+│   ├── exception/
+│   │   ├── ResourceNotFoundException.java   (extends RuntimeException)
+│   │   ├── BadRequestException.java         (extends RuntimeException)
+│   │   └── GlobalExceptionHandler.java      (@RestControllerAdvice)
+│   ├── response/
+│   │   └── ApiResponse.java                 (wrapper generico: success, message, data)
+│   └── utils/
+│       └── DateUtils.java                   (helpers de fecha si se necesitan)
+|
+├── auth/
+│   ├── controller/
+│   │   ├── AuthController.java              (interfaz con @RequestMapping)
+│   │   └── AuthControllerImpl.java          (@RestController, implementa AuthController)
+│   ├── service/
+│   │   ├── AuthService.java                 (interfaz)
+│   │   └── AuthServiceImpl.java             (@Service, implementa AuthService)
+│   ├── repository/
+│   │   └── UsuarioRepository.java           (extends JpaRepository<Usuario, Integer>)
+│   ├── model/
+│   │   └── Usuario.java                     (@Entity, tabla: usuario)
+│   ├── dto/
+│   │   ├── LoginRequest.java                (usuario, contrasena)
+│   │   └── LoginResponse.java              (token, tipo, usuario)
+│   └── util/
+│       ├── JwtUtil.java                     (generar y validar tokens JWT)
+│       └── JwtAuthenticationFilter.java     (extends OncePerRequestFilter)
+|
+├── propietario/
+│   ├── controller/
+│   │   ├── PropietarioController.java
+│   │   └── PropietarioControllerImpl.java
+│   ├── service/
+│   │   ├── PropietarioService.java
+│   │   └── PropietarioServiceImpl.java
+│   ├── repository/
+│   │   ├── PropietarioRepository.java       (interfaz, extends JpaRepository)
+│   │   └── PropietarioRepositoryImpl.java   (implementacion con queries custom si aplica)
+│   ├── model/
+│   │   └── Propietario.java
+│   └── dto/
+│       ├── PropietarioRequest.java
+│       └── PropietarioResponse.java
+|
+├── especie/
+│   ├── controller/
+│   │   ├── EspecieController.java
+│   │   └── EspecieControllerImpl.java
+│   ├── service/
+│   │   ├── EspecieService.java
+│   │   └── EspecieServiceImpl.java
+│   ├── repository/
+│   │   └── EspecieRepository.java
+│   ├── model/
+│   │   └── Especie.java
+│   └── dto/
+│       ├── EspecieRequest.java
+│       └── EspecieResponse.java
+|
+├── raza/
+│   ├── controller/
+│   │   ├── RazaController.java
+│   │   └── RazaControllerImpl.java
+│   ├── service/
+│   │   ├── RazaService.java
+│   │   └── RazaServiceImpl.java
+│   ├── repository/
+│   │   └── RazaRepository.java
+│   ├── model/
+│   │   └── Raza.java
+│   └── dto/
+│       ├── RazaRequest.java
+│       └── RazaResponse.java
+|
+├── mascota/
+│   ├── controller/
+│   │   ├── MascotaController.java
+│   │   └── MascotaControllerImpl.java
+│   ├── service/
+│   │   ├── MascotaService.java
+│   │   └── MascotaServiceImpl.java
+│   ├── repository/
+│   │   ├── MascotaRepository.java
+│   │   └── MascotaRepositoryImpl.java
+│   ├── model/
+│   │   └── Mascota.java
+│   └── dto/
+│       ├── MascotaRequest.java
+│       └── MascotaResponse.java
+|
+├── visita/
+│   ├── controller/
+│   │   ├── VisitaController.java
+│   │   └── VisitaControllerImpl.java
+│   ├── service/
+│   │   ├── VisitaService.java
+│   │   └── VisitaServiceImpl.java
+│   ├── repository/
+│   │   ├── VisitaRepository.java
+│   │   └── VisitaRepositoryImpl.java
+│   ├── model/
+│   │   └── Visita.java
+│   └── dto/
+│       ├── VisitaRequest.java
+│       └── VisitaResponse.java
+|
+└── dashboard/
+    ├── controller/
+    │   ├── DashboardController.java
+    │   └── DashboardControllerImpl.java
+    ├── service/
+    │   ├── DashboardService.java
+    │   └── DashboardServiceImpl.java
+    └── dto/
+        └── DashboardEstadisticasResponse.java
+
+src/main/resources/
+├── application.properties
+└── db/
+    └── migration/
+        └── V1__init.sql             (script inicial de Flyway)
+
+
+5. ENTIDADES Y MODELO DE DATOS
+================================================================================
+
+5.1 Usuario  (tabla: usuario)
+    Usado exclusivamente para autenticacion.
+    ├── id          : Integer       @Id @GeneratedValue
+    ├── username    : String        @Column(unique=true, nullable=false)
+    └── password    : String        @Column(nullable=false)  [BCrypt]
+
+5.2 Propietario  (tabla: propietario)
+    ├── id          : Integer       @Id @GeneratedValue
+    ├── nombre      : String        @Column(nullable=false)
+    ├── apellido    : String        @Column(nullable=false)
+    ├── telefono    : String
+    ├── correo      : String
+    ├── direccion   : String
+    ├── ci          : String        @Column(unique=true)
+    └── mascotas    : List<Mascota> @OneToMany(mappedBy="propietario", fetch=LAZY)
+
+5.3 Especie  (tabla: especie)
+    ├── id          : Integer       @Id @GeneratedValue
+    ├── nombre      : String        @Column(nullable=false, unique=true)
+    └── razas       : List<Raza>    @OneToMany(mappedBy="especie", fetch=LAZY)
+
+5.4 Raza  (tabla: raza)
+    ├── id          : Integer       @Id @GeneratedValue
+    ├── nombre      : String        @Column(nullable=false)
+    └── especie     : Especie       @ManyToOne @JoinColumn(name="especie_id")
+
+5.5 Mascota  (tabla: mascota)
+    ├── id               : Integer       @Id @GeneratedValue
+    ├── nombre           : String        @Column(nullable=false)
+    ├── fechaNacimiento  : LocalDate
+    ├── sexo             : String        (valores: "M" o "F")
+    ├── peso             : Double
+    ├── color            : String
+    ├── notas            : String
+    ├── propietario      : Propietario   @ManyToOne @JoinColumn(name="propietario_id")
+    ├── especie          : Especie       @ManyToOne @JoinColumn(name="especie_id")
+    ├── raza             : Raza          @ManyToOne @JoinColumn(name="raza_id")
+    └── visitas          : List<Visita>  @OneToMany(mappedBy="mascota", fetch=LAZY)
+
+5.6 Visita  (tabla: visita)
+    ├── id              : Integer        @Id @GeneratedValue
+    ├── fecha           : LocalDateTime  @Column(nullable=false)
+    ├── motivo          : String         @Column(nullable=false)
+    ├── diagnostico     : String
+    ├── tratamiento     : String
+    ├── observaciones   : String
+    ├── pesoActual      : Double
+    ├── veterinario     : String
+    └── mascota         : Mascota        @ManyToOne @JoinColumn(name="mascota_id")
+
+
+6. SCRIPT FLYWAY — V1__init.sql
+================================================================================
+
+Ubicacion: src/main/resources/db/migration/V1__init.sql
+
+El script debe crear las tablas en este orden (respetando FK):
+
+  1. usuario
+  2. especie
+  3. raza          (FK -> especie)
+  4. propietario
+  5. mascota       (FK -> propietario, especie, raza)
+  6. visita        (FK -> mascota)
+
+Ademas debe insertar datos iniciales (seed):
+  - 1 usuario administrador: username="admin", password=BCrypt de "admin123"
+  - 4 especies: Canino, Felino, Ave, Roedor
+  - Razas de ejemplo para cada especie:
+      Canino  → Labrador, Golden Retriever, Bulldog, Chihuahua
+      Felino  → Siames, Persa, Maine Coon, Bengala
+      Ave     → Loro, Canario, Periquito
+      Roedor  → Hamster, Cobaya, Chinchilla
+
+Ejemplo de estructura SQL esperada:
+
+  CREATE TABLE IF NOT EXISTS usuario (
+      id       SERIAL PRIMARY KEY,
+      username VARCHAR(100) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS especie (
+      id     SERIAL PRIMARY KEY,
+      nombre VARCHAR(100) NOT NULL UNIQUE
+  );
+
+  CREATE TABLE IF NOT EXISTS raza (
+      id         SERIAL PRIMARY KEY,
+      nombre     VARCHAR(100) NOT NULL,
+      especie_id INTEGER NOT NULL REFERENCES especie(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS propietario (
+      id        SERIAL PRIMARY KEY,
+      nombre    VARCHAR(100) NOT NULL,
+      apellido  VARCHAR(100) NOT NULL,
+      telefono  VARCHAR(20),
+      correo    VARCHAR(150),
+      direccion VARCHAR(255),
+      ci        VARCHAR(20) UNIQUE
+  );
+
+  CREATE TABLE IF NOT EXISTS mascota (
+      id                SERIAL PRIMARY KEY,
+      nombre            VARCHAR(100) NOT NULL,
+      fecha_nacimiento  DATE,
+      sexo              VARCHAR(1),
+      peso              DOUBLE PRECISION,
+      color             VARCHAR(80),
+      notas             TEXT,
+      propietario_id    INTEGER REFERENCES propietario(id),
+      especie_id        INTEGER REFERENCES especie(id),
+      raza_id           INTEGER REFERENCES raza(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS visita (
+      id            SERIAL PRIMARY KEY,
+      fecha         TIMESTAMP NOT NULL,
+      motivo        VARCHAR(255) NOT NULL,
+      diagnostico   TEXT,
+      tratamiento   TEXT,
+      observaciones TEXT,
+      peso_actual   DOUBLE PRECISION,
+      veterinario   VARCHAR(150),
+      mascota_id    INTEGER NOT NULL REFERENCES mascota(id)
+  );
+
+
+7. CONFIGURACION — application.properties
+================================================================================
+
+  spring.application.name=veterinaria
+
+  # PostgreSQL
+  spring.datasource.url=jdbc:postgresql://localhost:5439/veterinaria_db
+  spring.datasource.username=postgres
+  spring.datasource.password=12345
+  spring.datasource.driver-class-name=org.postgresql.Driver
+
+  # JPA / Hibernate
+  spring.jpa.hibernate.ddl-auto=validate
+  spring.jpa.show-sql=false
+  spring.jpa.properties.hibernate.format_sql=true
+  spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+
+  # Flyway
+  spring.flyway.enabled=true
+  spring.flyway.locations=classpath:db/migration
+  spring.flyway.baseline-on-migrate=true
+
+  # JWT
+  jwt.secret=clave-secreta-muy-larga-de-al-menos-256-bits-para-HS256
+  jwt.expiration-ms=86400000
+
+  # OpenAPI / Swagger
+  springdoc.api-docs.path=/api-docs
+  springdoc.swagger-ui.path=/swagger-ui.html
+
+  # CORS (ajustar en produccion)
+  cors.allowed-origins=http://localhost:5173
+
+
+8. DEPENDENCIAS pom.xml
+================================================================================
+
+  Agregar las siguientes dependencias al pom.xml:
+
+  <!-- Spring Boot Starters -->
+  spring-boot-starter-web
+  spring-boot-starter-data-jpa
+  spring-boot-starter-security
+  spring-boot-starter-validation
+
+  <!-- PostgreSQL -->
+  postgresql (runtime)
+
+  <!-- Flyway -->
+  flyway-core
+  flyway-database-postgresql
+
+  <!-- JWT (jjwt 0.12.x) -->
+  jjwt-api        0.12.6
+  jjwt-impl       0.12.6 (runtime)
+  jjwt-jackson    0.12.6 (runtime)
+
+  <!-- SpringDoc OpenAPI -->
+  springdoc-openapi-starter-webmvc-ui  2.x
+
+  <!-- Lombok -->
+  lombok (provided)
+
+  <!-- Test -->
+  spring-boot-starter-test
+
+
+9. SEGURIDAD — AUTENTICACION JWT
+================================================================================
+
+9.1 Flujo de autenticacion:
+    1. El cliente hace POST /api/v1/auth/login con { "username": "...", "password": "..." }
+    2. El backend valida las credenciales contra la tabla usuario (BCrypt).
+    3. Si son correctas, retorna { "token": "...", "tipo": "Bearer", "username": "..." }
+    4. El cliente incluye el token en todas las peticiones: Authorization: Bearer <token>
+    5. JwtAuthenticationFilter valida el token en cada request antes de llegar al controller.
+
+9.2 Clase JwtUtil debe tener:
+    - generateToken(String username) : String
+    - getUsernameFromToken(String token) : String
+    - validateToken(String token) : boolean
+    - Usa el secret y expiration de application.properties via @Value
+
+9.3 SecurityConfig debe:
+    - Deshabilitar CSRF (API REST stateless)
+    - Configurar CORS (permitir origen del frontend)
+    - Marcar /api/v1/auth/** como publico (permitAll)
+    - Marcar /swagger-ui.html, /api-docs/** como publico
+    - Requerir autenticacion para el resto de endpoints
+    - Registrar JwtAuthenticationFilter antes de UsernamePasswordAuthenticationFilter
+    - Usar PasswordEncoder BCrypt como bean
+    - Implementar UserDetailsService usando UsuarioRepository
+
+9.4 OpenApiConfig debe configurar el esquema de seguridad JWT en Swagger
+    para que el boton "Authorize" acepte el Bearer token.
+
+
+10. LOGICA DE NEGOCIO — DETALLES POR FEATURE
+================================================================================
+
+10.1 AUTH
+     - login(LoginRequest) : LoginResponse
+       * Busca el usuario por username, lanza BadRequestException si no existe.
+       * Verifica password con BCryptPasswordEncoder.matches().
+       * Genera JWT y retorna LoginResponse.
+
+10.2 PROPIETARIO
+     - findAll() : List<PropietarioResponse>
+     - findById(Integer id) : PropietarioResponse
+       * Lanza ResourceNotFoundException si no existe.
+     - search(String nombre, String ci) : List<PropietarioResponse>
+       * Busca por nombre (ILIKE) o CI. Ambos parametros son opcionales.
+       * Usar query JPQL en el repositorio:
+         SELECT p FROM Propietario p WHERE
+           (:nombre IS NULL OR LOWER(p.nombre) LIKE LOWER(CONCAT('%',:nombre,'%'))
+           OR LOWER(p.apellido) LIKE LOWER(CONCAT('%',:nombre,'%')))
+           AND (:ci IS NULL OR p.ci = :ci)
+     - create(PropietarioRequest) : PropietarioResponse
+     - update(Integer id, PropietarioRequest) : PropietarioResponse
+     - delete(Integer id) : void
+       * Lanza ResourceNotFoundException si no existe.
+
+10.3 ESPECIE
+     - findAll() : List<EspecieResponse>  (incluir lista de razas en la respuesta)
+     - create(EspecieRequest) : EspecieResponse
+
+10.4 RAZA
+     - findAll() : List<RazaResponse>
+     - findByEspecie(Integer especieId) : List<RazaResponse>
+     - create(RazaRequest) : RazaResponse
+       * Valida que la especie exista.
+
+10.5 MASCOTA
+     - findAll() : List<MascotaResponse>
+     - findById(Integer id) : MascotaResponse
+     - search(String nombre, Integer propietarioId) : List<MascotaResponse>
+       * Busca por nombre (ILIKE) y/o propietarioId. Ambos opcionales.
+     - create(MascotaRequest) : MascotaResponse
+       * Valida que propietario, especie y raza existan.
+       * Valida que la raza pertenezca a la especie indicada.
+     - update(Integer id, MascotaRequest) : MascotaResponse
+     - delete(Integer id) : void
+
+10.6 VISITA
+     - findAll() : List<VisitaResponse>
+     - findById(Integer id) : VisitaResponse
+     - findByMascota(Integer mascotaId) : List<VisitaResponse>
+       * Retorna todas las visitas de una mascota ordenadas por fecha DESC.
+     - create(VisitaRequest) : VisitaResponse
+       * Valida que la mascota exista.
+       * Si fecha no se proporciona, usar LocalDateTime.now().
+     - update(Integer id, VisitaRequest) : VisitaResponse
+     - delete(Integer id) : void
+
+10.7 DASHBOARD
+     - getEstadisticas() : DashboardEstadisticasResponse
+       Campos del response:
+       ├── totalMascotas      : long   (COUNT de mascota)
+       ├── totalPropietarios  : long   (COUNT de propietario)
+       ├── visitasMesActual   : long   (COUNT de visita WHERE fecha en el mes actual)
+       └── mascotasPorEspecie : List<EspecieConteoResponse>
+               └── { nombreEspecie: String, cantidad: long }
+       Usar queries JPQL en el repositorio para cada conteo.
+
+
+11. DTOs — ESTRUCTURA ESPERADA
+================================================================================
+
+LoginRequest        { username, password }
+LoginResponse       { token, tipo("Bearer"), username }
+
+PropietarioRequest  { nombre*, apellido*, telefono, correo, direccion, ci }
+PropietarioResponse { id, nombre, apellido, telefono, correo, direccion, ci }
+
+EspecieRequest      { nombre* }
+EspecieResponse     { id, nombre, razas: List<RazaResponse> }
+
+RazaRequest         { nombre*, especieId* }
+RazaResponse        { id, nombre, especieId, especieNombre }
+
+MascotaRequest      { nombre*, fechaNacimiento, sexo, peso, color, notas,
+                      propietarioId*, especieId*, razaId* }
+MascotaResponse     { id, nombre, fechaNacimiento, sexo, peso, color, notas,
+                      propietario: PropietarioResponse,
+                      especie: EspecieResponse (sin lista de razas),
+                      raza: RazaResponse }
+
+VisitaRequest       { fecha, motivo*, diagnostico, tratamiento, observaciones,
+                      pesoActual, veterinario, mascotaId* }
+VisitaResponse      { id, fecha, motivo, diagnostico, tratamiento, observaciones,
+                      pesoActual, veterinario,
+                      mascotaId, mascotaNombre }
+
+DashboardEstadisticasResponse {
+    totalMascotas, totalPropietarios, visitasMesActual,
+    mascotasPorEspecie: List<{ nombreEspecie, cantidad }>
+}
+
+ApiResponse<T>      { success: boolean, message: String, data: T }
+    Todos los endpoints deben retornar ApiResponse<T>.
+
+  Los campos marcados con * son obligatorios (@NotBlank / @NotNull con validacion
+  de Bean Validation en los Request DTOs).
+
+
+12. ENDPOINTS DE LA API REST
+================================================================================
+
+Base URL: /api/v1
+Todos los endpoints excepto /auth/** requieren header: Authorization: Bearer <token>
+Todos retornan ApiResponse<T>.
+
+  POST   /auth/login                      Autenticar usuario (publico)
+
+  GET    /propietarios                    Listar todos
+  GET    /propietarios/{id}               Obtener por ID
+  GET    /propietarios/buscar?nombre=&ci= Buscar
+  POST   /propietarios                    Crear
+  PUT    /propietarios/{id}               Actualizar
+  DELETE /propietarios/{id}               Eliminar
+
+  GET    /especies                        Listar todas (con razas)
+  POST   /especies                        Crear especie
+
+  GET    /razas                           Listar todas
+  GET    /razas?especieId={id}            Filtrar por especie
+  POST   /razas                           Crear raza
+
+  GET    /mascotas                        Listar todas
+  GET    /mascotas/{id}                   Obtener por ID
+  GET    /mascotas/buscar?nombre=&propietarioId=  Buscar
+  POST   /mascotas                        Crear
+  PUT    /mascotas/{id}                   Actualizar
+  DELETE /mascotas/{id}                   Eliminar
+
+  GET    /visitas                         Listar todas
+  GET    /visitas/{id}                    Obtener por ID
+  GET    /visitas?mascotaId={id}          Historial de una mascota (orden fecha DESC)
+  POST   /visitas                         Crear
+  PUT    /visitas/{id}                    Actualizar
+  DELETE /visitas/{id}                    Eliminar
+
+  GET    /dashboard/estadisticas          KPIs generales
+
+
+13. MANEJO DE ERRORES
+================================================================================
+
+GlobalExceptionHandler (@RestControllerAdvice) debe capturar:
+
+  ResourceNotFoundException   → 404 NOT FOUND
+      ApiResponse { success: false, message: "mensaje del error", data: null }
+
+  BadRequestException         → 400 BAD REQUEST
+      ApiResponse { success: false, message: "mensaje del error", data: null }
+
+  MethodArgumentNotValidException → 400 BAD REQUEST (errores de validacion)
+      ApiResponse { success: false, message: "campo: mensaje; campo2: mensaje2", data: null }
+
+  Exception (generica)        → 500 INTERNAL SERVER ERROR
+      ApiResponse { success: false, message: "Error interno del servidor", data: null }
+
+
+14. BUENAS PRACTICAS A SEGUIR
+================================================================================
+
+  - Todas las interfaces de Controller llevan @RequestMapping y definen los metodos
+    con sus anotaciones HTTP (@GetMapping, @PostMapping, etc.) y @Operation de OpenAPI.
+  - Las implementaciones solo implementan la interfaz, sin anotaciones duplicadas.
+  - Los Service e interfaces de Repository siguen el mismo patron.
+  - Usar @Slf4j de Lombok en los @Service para logging.
+  - Usar @RequiredArgsConstructor de Lombok en lugar de @Autowired.
+  - Los DTOs de Request usan record de Java o clase con @Data de Lombok.
+  - Los DTOs de Response usan record de Java para inmutabilidad.
+  - Los mapeos entre Entity y DTO se hacen en el Service (sin librerias de mapeo externas).
+  - No exponer las entidades JPA directamente en los endpoints.
+  - Validar siempre la existencia de entidades relacionadas en el Service antes de persistir.
+  - Los repositorios con queries custom usan @Query con JPQL (no SQL nativo salvo necesidad).
+  - JwtAuthenticationFilter extiende OncePerRequestFilter.
+  - Configurar CORS en SecurityConfig para permitir el origen del frontend (localhost:5173).
+
+
+15. RELACIONES ENTRE ENTIDADES
+================================================================================
+
+  Propietario  ||--o{  Mascota       (un propietario tiene muchas mascotas)
+  Especie      ||--o{  Raza          (una especie tiene muchas razas)
+  Especie      ||--o{  Mascota       (una especie agrupa muchas mascotas)
+  Raza         ||--o{  Mascota       (una raza clasifica muchas mascotas)
+  Mascota      ||--o{  Visita        (una mascota tiene muchas visitas)
+
+
+================================================================================
+  FIN DEL DOCUMENTO — GENERAR EL BACKEND COMPLETO SEGUN ESTA ESPECIFICACION
+================================================================================

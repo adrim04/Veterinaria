@@ -1,0 +1,7 @@
+package com.veterinaria.especie.repository;
+
+import com.veterinaria.especie.model.Especie;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface EspecieRepository extends JpaRepository<Especie, Integer> {
+}

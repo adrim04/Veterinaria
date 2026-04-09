@@ -1,0 +1,11 @@
+package com.veterinaria.raza.repository;
+
+import com.veterinaria.raza.model.Raza;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface RazaRepository extends JpaRepository<Raza, Integer> {
+
+    List<Raza> findByEspecieId(Integer especieId);
+}
