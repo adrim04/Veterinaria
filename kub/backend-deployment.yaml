@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: veterinaria
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: veterinaria-backend:v1.0
+          imagePullPolicy: Always
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres-service:5432/veterinaria
+            - name: SPRING_DATASOURCE_USERNAME
+              value: appuser
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: veterinaria-secret
+                  key: SPRING_DATASOURCE_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: veterinaria-secret
+                  key: JWT_SECRET
+            - name: CORS_ALLOWED_ORIGINS
+              value: "*"
+              value: "*"
+              value: "http://localhost:30070,http://localhost:8888/"
+          ports:
+            - containerPort: 8080
